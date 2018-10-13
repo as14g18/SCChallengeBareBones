@@ -1,6 +1,0 @@
-clear X;
-incr X;
-incr X;
-while X not 10 do;
-incr X;
-end;
