@@ -11,7 +11,7 @@ public class BareBones {
 	private String[] sourceCode;
 	private Stack<Integer> lineStack;
 	private Stack<String[]> conditionStack;
-	
+		
 	public BareBones() throws IOException {
 		this.variableList = new HashMap<String, Integer>();
 		this.lineStack = new Stack<Integer>();
@@ -20,7 +20,7 @@ public class BareBones {
 	}
 	
 	public void initialize() throws IOException {
-		BufferedReader br = new BufferedReader(new FileReader("file.txt"));
+		BufferedReader br = new BufferedReader(new FileReader("triple.txt"));
 		String line = br.readLine();
 		StringBuilder builder = new StringBuilder();
 		
@@ -28,7 +28,7 @@ public class BareBones {
 			builder.append(line);
 			line = br.readLine();
 		}
-		this.sourceCode = builder.toString().split(";");
+		this.sourceCode = builder.toString().split(";"); // Loads entire source code, allows random line access
 		
 		while (this.lineNum < this.sourceCode.length) {
 			// System.out.println(this.sourceCode[this.lineNum]);
@@ -37,6 +37,10 @@ public class BareBones {
 		}
 		
 		br.close();
+	}
+	
+	public void throwError() {
+		System.out.println("ERROR INTERPRETING [" + this.sourceCode[this.lineNum].trim() + "] AT LINE " + ((int)this.lineNum + 1));
 	}
 	
 	private void interpret(String line) {
@@ -50,11 +54,12 @@ public class BareBones {
 			
 			if (condition[1].equals(this.variableList.get(condition[0]).toString())) { // Deals with conditions that are already satisfied
 				String trimmedLine = this.sourceCode[this.lineNum].trim();
-				while (trimmedLine != "end") {
+				while (!trimmedLine.equals("end")) {
+					trimmedLine = this.sourceCode[this.lineNum].trim();
 					this.lineNum++;
 				}
 				
-				this.lineNum++;
+				lineNum--;
 				return;
 			}
 			
@@ -71,7 +76,14 @@ public class BareBones {
 			
 			this.lineNum = lineStack.peek();
 		} else {
-			String value = splitLine[1];
+			String value;
+			try {
+				value = splitLine[1];
+			} catch (ArrayIndexOutOfBoundsException e) {
+				throwError();
+				return;
+			}
+			
 			if (this.variableList.get(value) == null) {
 				this.variableList.put(value, 0); // Assigns variable to zero if it was previously unassigned
 			}
@@ -80,6 +92,8 @@ public class BareBones {
 				this.variableList.put(value, this.variableList.get(value) + 1);
 			} else if (splitLine[0].equals("decr")){
 				this.variableList.put(value, this.variableList.get(value) - 1);
+			} else {
+				throwError();
 			}
 		}
 		
