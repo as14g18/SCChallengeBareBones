@@ -1,1 +1,0 @@
-while X not 0 do;
