@@ -3,14 +3,17 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Stack;
 
 public class BareBones {
 	private HashMap<String, Integer> variableList;
 	private int lineNum;
 	private String[] sourceCode;
+	private Stack<Integer> lineStack;
 	
 	public BareBones() throws IOException {
 		this.variableList = new HashMap<String, Integer>();
+		this.lineStack = new Stack<Integer>();
 		this.lineNum = 0;
 	}
 	
@@ -30,18 +33,28 @@ public class BareBones {
 			interpret(this.sourceCode[this.lineNum]);
 			this.lineNum++;
 		}
+		
+		br.close();
 	}
 	
 	private void interpret(String line) {
+		line = line.trim();
 		String[] splitLine = line.split(" ");
 		
 		if (splitLine[0].equals("while")) {
-			int startNum = this.lineNum + 1;
+			this.lineStack.push(this.lineNum + 1);
 			this.lineNum++;
-			if ((this.sourceCode[this.lineNum].equals("do")) && (!(this.variableList.get(splitLine[1]).equals(splitLine[3])))) {
-				this.lineNum = startNum;
-			} else {
-				interpret(this.sourceCode[this.lineNum]);
+			while (true) {
+				if ((this.sourceCode[this.lineNum].equals("end"))) {
+					if (this.variableList.get(splitLine[1]).toString().equals(splitLine[3])) {
+						this.lineStack.pop();
+						return;
+					}
+					this.lineNum = this.lineStack.peek();
+				} else {
+					interpret(this.sourceCode[this.lineNum]);
+					this.lineNum++;
+				}
 			}
 		} else if (splitLine[0].equals("clear")) {
 			this.variableList.put(splitLine[1], 0);
