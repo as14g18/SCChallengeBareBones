@@ -1,13 +1,6 @@
 clear X;
 incr X;
 incr X;
-.
-.
-l̵̛͎̖̜͓̤͖̀͗́̎̉̈́̚͢͢͞ͅm̷̡͓̗̳͈͍̹̩̩̈̓̊̾̌̉ͅa̵̧̢͉̙̯̰͖͑͋͆͋̊͌̓̒͝o͍̳̙̮͓͛̿͗̄́̍
-̱̖̰͍̫̱̠͐̋̀͛̑̆͜͜͜
-.
-.
+while X not 10 do;
 incr X;
-delete X;
-incr Y;
-incr Y;
+end;
