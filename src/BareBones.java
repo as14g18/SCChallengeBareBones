@@ -10,10 +10,12 @@ public class BareBones {
 	private int lineNum;
 	private String[] sourceCode;
 	private Stack<Integer> lineStack;
+	private Stack<String[]> conditionStack;
 	
 	public BareBones() throws IOException {
 		this.variableList = new HashMap<String, Integer>();
 		this.lineStack = new Stack<Integer>();
+		this.conditionStack = new Stack<String[]>();
 		this.lineNum = 0;
 	}
 	
@@ -29,7 +31,7 @@ public class BareBones {
 		this.sourceCode = builder.toString().split(";");
 		
 		while (this.lineNum < this.sourceCode.length) {
-			System.out.println(this.sourceCode[this.lineNum]); //////////
+			// System.out.println(this.sourceCode[this.lineNum]);
 			interpret(this.sourceCode[this.lineNum]);
 			this.lineNum++;
 		}
@@ -42,28 +44,38 @@ public class BareBones {
 		String[] splitLine = line.split(" ");
 		
 		if (splitLine[0].equals("while")) {
-			this.lineStack.push(this.lineNum + 1);
-			this.lineNum++;
-			while (true) {
-				if ((this.sourceCode[this.lineNum].equals("end"))) {
-					if (this.variableList.get(splitLine[1]).toString().equals(splitLine[3])) {
-						this.lineStack.pop();
-						return;
-					}
-					this.lineNum = this.lineStack.peek();
-				} else {
-					interpret(this.sourceCode[this.lineNum]);
+			String[] condition = new String[2];
+			condition[0] = splitLine[1];
+			condition[1] = splitLine[3];
+			
+			if (condition[1].equals(this.variableList.get(condition[0]).toString())) { // Deals with conditions that are already satisfied
+				String trimmedLine = this.sourceCode[this.lineNum].trim();
+				while (trimmedLine != "end") {
 					this.lineNum++;
 				}
-			}
-		} else if (splitLine[0].equals("clear")) {
-			this.variableList.put(splitLine[1], 0);
-		} else {
-			if (this.variableList.get(splitLine[1]) == null) {
-				System.out.println("ERROR: ATTEMPTING TO MODIFY UNASSIGNED VARIABLE");
+				
+				this.lineNum++;
 				return;
 			}
+			
+			conditionStack.push(condition);
+			lineStack.push(this.lineNum);
+		} else if (splitLine[0].equals("clear")) {
+			this.variableList.put(splitLine[1], 0);
+		} else if (splitLine[0].equals("end")) {
+			if (this.variableList.get(this.conditionStack.peek()[0]).toString().equals(this.conditionStack.peek()[1])) {			
+				conditionStack.pop();
+				lineStack.pop();
+				return;
+			}
+			
+			this.lineNum = lineStack.peek();
+		} else {
 			String value = splitLine[1];
+			if (this.variableList.get(value) == null) {
+				this.variableList.put(value, 0); // Assigns variable to zero if it was previously unassigned
+			}
+			
 			if (splitLine[0].equals("incr")) {
 				this.variableList.put(value, this.variableList.get(value) + 1);
 			} else if (splitLine[0].equals("decr")){
@@ -71,6 +83,6 @@ public class BareBones {
 			}
 		}
 		
-		System.out.println(Arrays.asList(this.variableList));
+		System.out.println((Arrays.asList(this.variableList)).toString().replace("[{", "").replace("}]", ""));
 	}
 }
