@@ -1,6 +1,15 @@
-clear X;
-incr X;
-incr X;
-while X not 10 do;
-incr X;
-end;
+clear counter;
+clear r1;
+
+clear THREE;
+while THREE not 3;
+	incr THREE;
+end while;
+
+clear FIVE;
+while FIVE not 5;
+	incr FIVE;
+end while;
+
+while counter not 20 do;
+	calculate 
