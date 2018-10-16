@@ -79,19 +79,19 @@ public class BareBones {
 	
 	private void interpret(String line) {
 		line = line.trim();
-		Pattern p = Pattern.compile("" 			  			// -- LIST OF VALID COMMANDS --
-				+ "(incr (.*))|" 				  			// increment by one
-				+ "(decr (.*))|" 				  			// decrement by one
-				+ "(clear (.*))|" 	  			  			// set variable value to zero
-				+ "(while (.*) not ([0-9]*) do)|" 			// open while loop
-				+ "(end while)|" 				  			// close while loop
-				+ "(#(.*))|" 					  			// comments
-				+ "(if (.*) is ([0-9]*) do)|" 	  			// open if statement
-				+ "(else do)|"					  			// else statements
-				+ "(end if)|"					  			// close if statement
-				+ "(calculate (.*) (\\+|\\-|\\*|/) (.*))|"  // perform operation on left operand
-				+ "(copy (.*) to (.*))|"  		  			// copy value of one variable to other
-				+ "(print (.*))");
+		Pattern p = Pattern.compile("" 			  			  // -- LIST OF VALID COMMANDS --
+				+ "(incr (.*))|" 				  			  // increment by one
+				+ "(decr (.*))|" 				  			  // decrement by one
+				+ "(clear (.*))|" 	  			  			  // set variable value to zero
+				+ "(while (.*) not ([0-9]*) do)|" 			  // open while loop
+				+ "(end while)|" 				  			  // close while loop
+				+ "(#(.*))|" 					  			  // comments
+				+ "(if (.*) is ([0-9]*) do)|" 	  			  // open if statement
+				+ "(else do)|"					  			  // else statements
+				+ "(end if)|"					  			  // close if statement
+				+ "(calculate (.*) (\\+|\\-|\\*|/|%) (.*))|"  // perform operation on left operand
+				+ "(copy (.*) to (.*))|"  		  			  // copy value of one variable to other
+				+ "(print \"(.*)\")");						  // prints operand
 		Matcher m = p.matcher(line);
 		if (!m.matches()) {
 			throwError("interpret"); // terminates program if syntax is wrong
@@ -145,6 +145,9 @@ public class BareBones {
 			return;
 		} else if (splitLine[0].equals("#")){
 			return; // do nothing
+		} else if (splitLine[0].equals("print")) {
+			System.out.println(splitLine[1].replaceAll("\"", ""));
+			return;
 		} else if (splitLine[0].equals("calculate")) {
 			int leftValue = 0;
 			int rightValue = 0;
@@ -170,6 +173,8 @@ public class BareBones {
 				} else {
 					throwError("DIVISION BY ZERO");
 				}
+			} else if (splitLine[2].equals("%")) {
+				this.variableList.put(splitLine[1], leftValue % rightValue);
 			}
 		} else if (splitLine[0].equals("incr") || splitLine[0].equals("decr")) {
 			resetIfNull(splitLine[1]);
