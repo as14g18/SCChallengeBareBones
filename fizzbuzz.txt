@@ -1,0 +1,30 @@
+set THREE to 3;
+set FIVE to 5;
+
+clear counter;
+incr counter;
+clear r3;
+clear r5;
+while counter not 20 do;
+	# Checks if divisible by 3;
+	copy counter to r3;
+	copy counter to r5;
+	calculate r3 % THREE;
+	calculate r5 % FIVE;
+	
+	if r3 is 0 do;
+		if r5 is 0 do;
+			print "fizzbuzz";
+		else do;
+			print "fizz";
+		end if;
+	else do;
+		if r5 is 0 do;
+			print "buzz";
+		else do;
+			print "neither";
+		end if;
+	end if;
+	
+	incr counter;
+end while;

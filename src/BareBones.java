@@ -1,54 +1,44 @@
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class BareBones {
 	private HashMap<String, Integer> variableList;
-	private int lineNum;
+	private StackHolder stackHolder;
 	private String[] sourceCode;
-	private Stack<Integer> lineStack;
-	private Stack<String[]> conditionStack;
-	private Stack<Boolean> ifStack;
+	private int lineNum;
+	
+	private FileManager fileManager;
 		
-	public BareBones() throws IOException {
+	public BareBones() {
 		this.variableList = new HashMap<String, Integer>();
-		this.lineStack = new Stack<Integer>();
-		this.conditionStack = new Stack<String[]>();
-		this.ifStack = new Stack<Boolean>();
 		this.lineNum = 0;
+		this.fileManager = new FileManager();
+		this.stackHolder = new StackHolder();
 	}
 	
-	public void initialize() throws IOException {
-		BufferedReader br = new BufferedReader(new FileReader("triple.txt"));
-		String line = br.readLine();
-		StringBuilder builder = new StringBuilder();
-		
-		while (line != null) {
-			builder.append(line);
-			line = br.readLine();
-		}
-		this.sourceCode = builder.toString().split(";"); // Loads entire source code, allows random access to code
-		
-		br.close(); // todo: throw error if last character is not ;	
-		
-		while (this.lineNum < this.sourceCode.length) {
-			interpret(this.sourceCode[this.lineNum]);
-			this.lineNum++;
+	public void initialize() {
+		try {
+			sourceCode = fileManager.readFile("triple.txt");
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 		
-		if (!(lineStack.isEmpty() && conditionStack.isEmpty() && ifStack.isEmpty())) {
+		while (lineNum < sourceCode.length) {
+			interpret(sourceCode[lineNum]);
+			lineNum++;
+		}
+		
+		if (!stackHolder.allStacksAreEmpty()) {
 			throwError("UNCLOSED STATEMENT. OUTPUT MAY BE WRONG"); // Ensures all while/if statements are properly closed
 		}
 	}
 	
-	public void throwError(String reason) { // Error handling different scenarios
+	private void throwError(String reason) { // Error handling different scenarios
 		if (reason == "interpret") {
-			System.out.println("ERROR INTERPRETING [" + this.sourceCode[this.lineNum].trim() + "] AT LINE " + ((int)this.lineNum + 1));
+			System.out.println("ERROR INTERPRETING [" + sourceCode[lineNum].trim() + "] AT LINE " + (lineNum + 1));
 		} else if (reason == "negative") {
 			System.out.println("ERROR: CANNOT ASSIGN NON NEGATIVE INTEGER TO VARIABLE");
 		} else {
@@ -57,21 +47,40 @@ public class BareBones {
 		System.exit(1);
 	}
 	
-	public void resetIfNull(String value) { // Assigns variable to zero if it was previously unassigned
-		if (this.variableList.get(value) == null) {
-			this.variableList.put(value, 0);
+	private void resetIfNull(String value) { // Assigns variable to zero if it was previously unassigned
+		if (variableList.get(value) == null) {
+			variableList.put(value, 0);
 		}
 	}
 	
-	public void jumpForwardUntil(String value) {
+	private void jumpForwardUntil(String value) {
+		int skipNested = -1;
+		String branchType = "";
+		
+		if (value.split(" ")[1].equals("if") || value.split(" ")[0].equals("else")) {
+			branchType = "if";
+		} else {
+			branchType = "while";
+		}
+		
 		try {
-			String trimmedLine = this.sourceCode[this.lineNum].trim();
-			while (!trimmedLine.equals(value)) {
-				trimmedLine = this.sourceCode[this.lineNum].trim();
-				this.lineNum++;
+			String trimmedLine = sourceCode[lineNum].trim();
+			while (true) {
+				if (trimmedLine.split(" ")[0].equals(branchType)) {
+					skipNested++;
+				}
+				if (trimmedLine.equals(value)) {
+					if (skipNested == 0) {
+						break;
+					} else {
+						skipNested--;
+					}
+				}
+				lineNum++;
+				trimmedLine = sourceCode[lineNum].trim();
 			}
 			
-			this.lineNum--;
+			lineNum--;
 		} catch (ArrayIndexOutOfBoundsException e) {
 			throwError("UNCLOSED STATEMENT");
 		}
@@ -91,7 +100,8 @@ public class BareBones {
 				+ "(end if)|"					  			  // close if statement
 				+ "(calculate (.*) (\\+|\\-|\\*|/|%) (.*))|"  // perform operation on left operand
 				+ "(copy (.*) to (.*))|"  		  			  // copy value of one variable to other
-				+ "(print \"(.*)\")");						  // prints operand
+				+ "(print \"(.*)\")|"						  // prints operand
+				+ "(set (.*) to [0-9]*)");					  // sets value of variable to number
 		Matcher m = p.matcher(line);
 		if (!m.matches()) {
 			throwError("interpret"); // terminates program if syntax is wrong
@@ -102,98 +112,112 @@ public class BareBones {
 		if (splitLine[0].equals("while")) {
 			resetIfNull(splitLine[1]);
 			
-			if (splitLine[3].equals(this.variableList.get(splitLine[1]).toString())) { // Deals with conditions that are already satisfied
+			if (splitLine[3].equals(variableList.get(splitLine[1]).toString())) { // Deals with conditions that are already satisfied
 				jumpForwardUntil("end while");
 				return;
 			}
 			
 			String[] condition = {splitLine[1], splitLine[3]};
-			this.conditionStack.push(condition);
-			this.lineStack.push(this.lineNum);
+			stackHolder.getStackCondition().push(condition);
+			stackHolder.getStackLine().push(lineNum);
 			return;
+			
 		} else if (splitLine[0].equals("if")) {
 			resetIfNull(splitLine[1]);
-			if (splitLine[3].equals(this.variableList.get(splitLine[1]).toString()) ) {
-				this.ifStack.push(true);
+			if (splitLine[3].equals(variableList.get(splitLine[1]).toString())) {
+				stackHolder.getStackIf().push(true);
 			} else {
 				jumpForwardUntil("else do");
-				this.ifStack.push(false);
+				stackHolder.getStackIf().push(false);
 			}
 			return;
+			
 		} else if (line.equals("else do")) {
-			if (this.ifStack.peek()) {
+			if (stackHolder.getStackIf().peek()) {
 				jumpForwardUntil("end if");
+				stackHolder.getStackIf().pop();
 			}
-			this.ifStack.pop();
 			return;
+			
 		} else if (line.equals("end if")) {
-			this.ifStack.pop();
+			stackHolder.getStackIf().pop();
 			return;
+			
 		} else if (splitLine[0].equals("clear")) {
-			this.variableList.put(splitLine[1], 0);
+			variableList.put(splitLine[1], 0);
+			
 		} else if ((line).equals("end while")) {
 			try {
-				if (this.variableList.get(this.conditionStack.peek()[0]).toString().equals(this.conditionStack.peek()[1])) {			
-					conditionStack.pop();
-					this.lineStack.pop();
+				if (variableList.get(stackHolder.getStackCondition().peek()[0]).toString().equals(stackHolder.getStackCondition().peek()[1])) {			
+					stackHolder.getStackCondition().pop();
+					stackHolder.getStackLine().pop();
 					return; // ends the while loop if condition has been met
 				}
 			} catch (java.util.EmptyStackException e) { // throws error if end is called before while loop is initialised
 				throwError("interpret");
 			}
-			this.lineNum = lineStack.peek();
+			lineNum = stackHolder.getStackLine().peek();
 			return;
+			
 		} else if (splitLine[0].equals("#")){
 			return; // do nothing
+			
 		} else if (splitLine[0].equals("print")) {
 			System.out.println(splitLine[1].replaceAll("\"", ""));
 			return;
+			
 		} else if (splitLine[0].equals("calculate")) {
 			int leftValue = 0;
 			int rightValue = 0;
 			try {
-				leftValue = this.variableList.get(splitLine[1]);
-				rightValue = this.variableList.get(splitLine[3]);
+				leftValue = variableList.get(splitLine[1]);
+				rightValue = variableList.get(splitLine[3]);
 			} catch (NullPointerException e){
 				throwError("UNINITIALISED VARIABLE");
 			}
 			if (splitLine[2].equals("+")) {
-				this.variableList.put(splitLine[1], leftValue + rightValue);
+				variableList.put(splitLine[1], leftValue + rightValue);
 			} else if (splitLine[2].equals("-")) {
 				if (leftValue - rightValue < 0) {
 					throwError("negative");
 				} else {
-					this.variableList.put(splitLine[1], leftValue - rightValue);
+					variableList.put(splitLine[1], leftValue - rightValue);
 				}
 			} else if (splitLine[2].equals("*")) {
-				this.variableList.put(splitLine[1], leftValue * rightValue);
+				variableList.put(splitLine[1], leftValue * rightValue);
 			} else if (splitLine[2].equals("/")) {
 				if (rightValue != 0) {
-					this.variableList.put(splitLine[1], leftValue / rightValue);
+					variableList.put(splitLine[1], leftValue / rightValue);
 				} else {
 					throwError("DIVISION BY ZERO");
 				}
 			} else if (splitLine[2].equals("%")) {
-				this.variableList.put(splitLine[1], leftValue % rightValue);
+				variableList.put(splitLine[1], leftValue % rightValue);
 			}
+			
 		} else if (splitLine[0].equals("incr") || splitLine[0].equals("decr")) {
 			resetIfNull(splitLine[1]);
 			
 			if (splitLine[0].equals("incr")) {
-				this.variableList.put(splitLine[1], this.variableList.get(splitLine[1]) + 1);
+				variableList.put(splitLine[1], variableList.get(splitLine[1]) + 1);
 			} else if (splitLine[0].equals("decr")){
-				if (this.variableList.get(splitLine[1]) >= 0) {
-					this.variableList.put(splitLine[1], this.variableList.get(splitLine[1]) - 1);
+				if (variableList.get(splitLine[1]) >= 0) {
+					variableList.put(splitLine[1], variableList.get(splitLine[1]) - 1);
 				} else {
 					throwError("negative");
 				}
 			}
+			
 		} else if (splitLine[0].equals("copy")) {
 			resetIfNull(splitLine[3]);
 			resetIfNull(splitLine[1]);
-			this.variableList.put(splitLine[3], this.variableList.get(splitLine[1]));
+			variableList.put(splitLine[3], variableList.get(splitLine[1]));
+			
+		} else if (splitLine[0].equals("set")) {
+			resetIfNull(splitLine[1]);
+			variableList.put(splitLine[1], Integer.parseInt(splitLine[3]));
 		}
 		
-		System.out.println((Arrays.asList(this.variableList)).toString().replace("[{", "").replace("}]", ""));
+		System.out.println((Arrays.asList(variableList)).toString().replace("[{", "").replace("}]", ""));
 	}
 }

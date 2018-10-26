@@ -1,18 +1,2 @@
-clear THREE;
-while THREE not 3 do;
-	incr THREE;
-end while;
-
-clear FIVE;
-copy THREE to FIVE;
-while FIVE not 5 do;
-	incr FIVE;
-end while;
-
-clear counter;
-clear r1;
-while counter not 20 do;
-	# Checks if divisible by 3;
-	copy counter to r1;
-	calculate r1 % THREE;
-	
+set THREE to 3;
+set FIVE to 5;
